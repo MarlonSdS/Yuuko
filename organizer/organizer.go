@@ -1,9 +1,22 @@
 package organizer
 
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
 type Regra struct {
 	Nome      string   `json:"nome"`
 	Extensoes []string `json:"extensoes"`
 	Destino   string   `json:"destino"`
+}
+
+type Movimento struct {
+	Nome    string // Nome do arquivo
+	Origem  string // Caminho completo do arquivo de origem
+	Destino string // Diretório de destino relativo à home
 }
 
 var regras = []Regra{
@@ -37,4 +50,69 @@ func PegarRegras() map[string]Regra {
 	}
 
 	return regrasMap
+}
+
+func Classificar(dir string, regras map[string]Regra) ([]Movimento, error) {
+	entradas, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("lendo pasta %s: %w", dir, err)
+	}
+
+	var movimentos []Movimento
+	for _, e := range entradas {
+		if e.IsDir() {
+			continue
+		}
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		regra, ok := regras[ext]
+		if !ok {
+			continue
+		}
+		fmt.Printf("Arquivo %s será movido para %s \n", e.Name(), regra.Destino)
+		movimentos = append(movimentos, Movimento{
+			Nome:    e.Name(),
+			Origem:  filepath.Join(dir, e.Name()),
+			Destino: regra.Destino,
+		})
+	}
+	return movimentos, nil
+}
+
+func MoverArquivos(movimentos []Movimento) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("obtendo diretório home: %w", err)
+	}
+
+	fmt.Printf("Movendo arquivos... \n")
+	for _, m := range movimentos {
+		destinoDir := filepath.Join(homeDir, m.Destino)
+		if err := os.MkdirAll(destinoDir, os.ModePerm); err != nil {
+			return fmt.Errorf("criando diretório %s: %w", destinoDir, err)
+		}
+
+		nomeArquivo := m.Nome
+		// Verifica se o arquivo de destino já existe
+		if _, err := os.Lstat(filepath.Join(destinoDir, nomeArquivo)); err == nil {
+			ext := filepath.Ext(m.Nome)
+			nome := strings.TrimSuffix(m.Nome, ext)
+			for i := 2; ; i++ {
+				nomeArquivo = fmt.Sprintf("%s_%d%s", nome, i, ext)
+				_, err := os.Lstat(filepath.Join(destinoDir, nomeArquivo))
+				if os.IsNotExist(err) {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("verificando arquivo de destino %s: %w", filepath.Join(destinoDir, nomeArquivo), err)
+				}
+			}
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("verificando arquivo de destino %s: %w", filepath.Join(destinoDir, nomeArquivo), err)
+		}
+
+		if err := os.Rename(m.Origem, filepath.Join(destinoDir, nomeArquivo)); err != nil {
+			return fmt.Errorf("movendo arquivo %s para %s: %w", m.Origem, destinoDir, err)
+		}
+	}
+	return nil
 }

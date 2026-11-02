@@ -26,34 +26,6 @@ func contarPorExtensao(dir string) (map[string]int, error) {
 	return contagem, nil
 }
 
-func classificar(dir string, regras map[string]organizer.Regra) error {
-	entradas, err := os.ReadDir(dir)
-	if err != nil {
-		return fmt.Errorf("lendo pasta %s: %w", dir, err)
-	}
-
-	for _, e := range entradas {
-		if e.IsDir() {
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(e.Name()))
-		regra, ok := regras[ext]
-		if !ok {
-			continue
-		}
-		destino := filepath.Join(dir, regra.Destino)
-		err = os.MkdirAll(destino, 0755)
-		if err != nil {
-			return fmt.Errorf("criando pasta %s: %w", destino, err)
-		}
-		err = os.Rename(filepath.Join(dir, e.Name()), filepath.Join(destino, e.Name()))
-		if err != nil {
-			return fmt.Errorf("movendo arquivo %s para %s: %w", e.Name(), destino, err)
-		}
-	}
-	return nil
-}
-
 func main() {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -70,5 +42,5 @@ func main() {
 	fmt.Println(c)
 	regras := organizer.PegarRegras()
 	//fmt.Println(regras)
-	classificar(downloads, regras)
+	organizer.Classificar(downloads, regras)
 }
