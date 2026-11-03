@@ -36,11 +36,21 @@ func main() {
 	downloads := filepath.Join(home, "Downloads")
 	c, err := contarPorExtensao(downloads)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Erro: %v\n", err)
+		fmt.Fprintln(os.Stderr, "Erro:", err)
 		os.Exit(1)
 	}
 	fmt.Println(c)
 	regras := organizer.PegarRegras()
-	//fmt.Println(regras)
-	organizer.Classificar(downloads, regras)
+	movimentos, err := organizer.Classificar(downloads, regras)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Erro ao classificar arquivos:", err)
+		return
+	}
+
+	err = organizer.MoverArquivos(movimentos)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Erro ao mover arquivos:", err)
+		return
+	}
+	fmt.Println("Arquivos movidos com sucesso!")
 }
