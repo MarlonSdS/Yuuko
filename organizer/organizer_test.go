@@ -139,6 +139,40 @@ func TestRegrasValidas(t *testing.T) {
 	}
 }
 
+func TestNomeLivre(t *testing.T) {
+	tests := []struct {
+		name       string
+		existentes []string
+		nome       string
+		esperado   string
+	}{
+		{"sem conflito mantém o nome", nil, "foto.png", "foto.png"},
+		{"conflito simples", []string{"foto.png"}, "foto.png", "foto (2).png"},
+		{"pula números ocupados", []string{"foto.png", "foto (2).png"}, "foto.png", "foto (3).png"},
+		{"já tem contador: incrementa", []string{"foto (2).png"}, "foto (2).png", "foto (3).png"},
+		{"número do próprio nome não é contador", []string{"aula_01.mp4"}, "aula_01.mp4", "aula_01 (2).mp4"},
+		{"extensão composta", []string{"a.tar.gz"}, "a.tar.gz", "a (2).tar.gz"},
+		{"sem extensão", []string{"LEIAME"}, "LEIAME", "LEIAME (2)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for _, nome := range tt.existentes {
+				escrever(t, filepath.Join(dir, nome), "x")
+			}
+
+			got, err := nomeLivre(dir, tt.nome)
+			if err != nil {
+				t.Fatalf("erro inesperado: %v", err)
+			}
+			if got != tt.esperado {
+				t.Errorf("obtido %q, esperado %q", got, tt.esperado)
+			}
+		})
+	}
+}
+
 func TestMoverArquivos(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -166,22 +200,22 @@ func TestMoverArquivos(t *testing.T) {
 			origens:    map[string]string{"foto.png": "novo"},
 			movimentos: []Movimento{{Nome: "foto.png", Destino: "Imagens"}},
 			esperado: map[string]string{
-				"Imagens/foto.png":   "antigo",
-				"Imagens/foto_2.png": "novo",
+				"Imagens/foto.png":     "antigo",
+				"Imagens/foto (2).png": "novo",
 			},
 		},
 		{
 			name: "conflito: usa o próximo número livre",
 			existentes: map[string]string{
-				"Imagens/foto.png":   "antigo1",
-				"Imagens/foto_2.png": "antigo2",
+				"Imagens/foto.png":     "antigo1",
+				"Imagens/foto (2).png": "antigo2",
 			},
 			origens:    map[string]string{"foto.png": "novo"},
 			movimentos: []Movimento{{Nome: "foto.png", Destino: "Imagens"}},
 			esperado: map[string]string{
-				"Imagens/foto.png":   "antigo1",
-				"Imagens/foto_2.png": "antigo2",
-				"Imagens/foto_3.png": "novo",
+				"Imagens/foto.png":     "antigo1",
+				"Imagens/foto (2).png": "antigo2",
+				"Imagens/foto (3).png": "novo",
 			},
 		},
 		{

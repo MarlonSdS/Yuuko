@@ -33,7 +33,7 @@ func main() {
 		return
 	}
 
-	downloads := filepath.Join(home, "Downloads")
+	downloads := filepath.Join(home, "Yuuko_test")
 	c, err := contarPorExtensao(downloads)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Erro:", err)
